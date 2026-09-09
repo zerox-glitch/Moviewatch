@@ -99,6 +99,7 @@ export default function RoomClient({ roomId }) {
   const codecs = useRef(null);
   const [hostPlaying, setHostPlaying] = useState(false);
   const [fileCheck, setFileCheck] = useState(null);
+  const [serverProbe, setServerProbe] = useState(null);
   const [copied, setCopied] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
   const [nowAt, setNowAt] = useState(0);
@@ -156,6 +157,29 @@ export default function RoomClient({ roomId }) {
       try { player.off("loadedmetadata", onMeta); player.off("error", onErr); } catch {}
     };
   }, [videoSrc, playerBump]);
+
+  // Authoritative file verdict: the host's own Python server reads the real
+  // codec inside the selected file (its bytes, not its name).
+  useEffect(() => {
+    if (!isHost || !serverUrl || phase !== "ready" || !room?.file) {
+      setServerProbe(null);
+      return;
+    }
+    let alive = true;
+    api
+      .files(serverUrl, roomId)
+      .then((data) => {
+        if (!alive) return;
+        const entry = (data.videos || []).find((v) => v.name === room.file);
+        setServerProbe(entry ? { name: entry.name, ...(entry.probe || {}) } : null);
+      })
+      .catch(() => {
+        if (alive) setServerProbe(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [isHost, serverUrl, phase, roomId, room?.file]);
 
   async function copyDirectLink() {
     if (!videoSrc) return;
@@ -915,7 +939,7 @@ export default function RoomClient({ roomId }) {
                 🧪 Copy direct link
               </button>
             </div>
-            <DiagnosticsLine mediaCheck={mediaCheck} codecs={codecs.current} fileCheck={fileCheck} />
+            <DiagnosticsLine mediaCheck={mediaCheck} codecs={codecs.current} fileCheck={fileCheck} serverProbe={serverProbe} />
             </>
           )}
 
@@ -993,7 +1017,7 @@ export default function RoomClient({ roomId }) {
               <p className="text-[11px] text-slate-500">
                 Volume &amp; subtitle tweaks are only on your screen — the other side is unaffected.
               </p>
-              <DiagnosticsLine mediaCheck={mediaCheck} codecs={codecs.current} fileCheck={fileCheck} />
+              <DiagnosticsLine mediaCheck={mediaCheck} codecs={codecs.current} fileCheck={fileCheck} serverProbe={serverProbe} />
             </div>
           )}
         </section>
@@ -1031,7 +1055,7 @@ function Mark({ ok }) {
   return ok ? <span className="text-emerald-400">✓</span> : <span className="text-red-400">✗</span>;
 }
 
-function DiagnosticsLine({ mediaCheck, codecs, fileCheck }) {
+function DiagnosticsLine({ mediaCheck, codecs, fileCheck, serverProbe }) {
   const hevcMissing = codecs && codecs.hevc === "";
   const h264Missing = codecs && codecs.h264 === "";
   return (
@@ -1054,6 +1078,37 @@ function DiagnosticsLine({ mediaCheck, codecs, fileCheck }) {
           </>
         )}
       </p>
+      {serverProbe && (
+        <p>
+          <span className="font-semibold text-slate-400">Server read of this file</span> ·{" "}
+          {serverProbe.container === "mp4" ? (
+            serverProbe.codec === "hevc" ? (
+              <span className="text-red-400">
+                ✗ this file IS HEVC/H.265 (read from its bytes) — it is still the{" "}
+                <b>original download</b>. HandBrake&apos;s result is a DIFFERENT file in the
+                folder you chose in its “Save As” box — press ♻️ Change movie and pick that one
+                (it will show “H.264 ✓” in the picker).
+              </span>
+            ) : serverProbe.codec === "h264" ? (
+              <span className="text-emerald-400">
+                ✓ H.264{serverProbe.width ? ` · ${serverProbe.width}×${serverProbe.height}` : ""}
+                {serverProbe.duration_s ? ` · ${formatTime(serverProbe.duration_s)}` : ""} ·{" "}
+                {serverProbe.web_optimized ? "web-optimized ✓ — this file will play" : "not web-optimized (plays, starts a bit slow)"}
+              </span>
+            ) : serverProbe.codec === "av1" || serverProbe.codec === "vp9" ? (
+              <span className="text-emerald-400">✓ {serverProbe.codec.toUpperCase()} — this file will play</span>
+            ) : serverProbe.codec === "mpeg4" ? (
+              <span className="text-red-400">✗ old MPEG-4 video — HandBrake it to H.264.</span>
+            ) : (
+              <span className="text-amber-400/90">unusual codec ({serverProbe.codec}) — HandBrake to H.264 if it won&apos;t start</span>
+            )
+          ) : (
+            <span className="text-red-400">
+              ✗ this is NOT an MP4 file — browsers can&apos;t read this container. HandBrake → MP4.
+            </span>
+          )}
+        </p>
+      )}
       <p>
         <span className="font-semibold text-slate-400">File check</span> ·{" "}
         {!fileCheck ? (

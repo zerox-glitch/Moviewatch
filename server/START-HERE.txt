@@ -30,7 +30,7 @@ WAY C - PowerShell (type it BY HAND, or copy from this file):
     cd $HOME\Desktop
     curl.exe -L -o moviewatch.py https://raw.githubusercontent.com/zerox-glitch/Moviewatch/arena/01a07e2b-moviewatch/server/moviewatch.py
 
-CHECK: the file must be about 30 KB. Tiny file = error page = delete and
+CHECK: the file must be about 35 KB. Tiny file = error page = delete and
 retry.  Type  Get-Item $HOME\Desktop\moviewatch.py  to see its size.
 
 STEP 3 - RUN THE SERVER (same PowerShell window)

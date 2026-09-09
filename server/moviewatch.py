@@ -209,6 +209,162 @@ def list_media(folder):
     return videos, subs
 
 
+# MP4 box probing — read the actual codec stored inside a file, so the app can
+# say "this file IS HEVC" (still the original download) vs "H.264, will play".
+# Walks top-level boxes only; seeks over mdat, so it is fast even on 4 GB files.
+_PROBE_CACHE = {}
+
+def _iter_boxes(buf, start, end):
+    """Yield (type, body_start, box_end) for the child boxes of buf[start:end]."""
+    pos = start
+    while pos + 8 <= end:
+        size = int.from_bytes(buf[pos:pos + 4], "big")
+        btype = buf[pos + 4:pos + 8].decode("latin-1")
+        hdr = 8
+        if size == 1:
+            if pos + 16 > end:
+                return
+            size = int.from_bytes(buf[pos + 8:pos + 16], "big")
+            hdr = 16
+        elif size == 0:
+            size = end - pos
+        if size < hdr or pos + size > end:
+            return
+        yield btype, pos + hdr, pos + size
+        pos += size
+
+def probe_mp4(path, size):
+    """Best-effort codec/duration/web-optimized detection for MP4 files."""
+    out = {"container": "unknown", "codec": None, "web_optimized": None,
+           "duration_s": None, "width": None, "height": None}
+    try:
+        with open(path, "rb") as f:
+            head = f.read(64)
+            if len(head) < 12 or head[4:8] != b"ftyp":
+                return out  # not an MP4 (.ts, .mkv, ...) -> container unknown
+            out["container"] = "mp4"
+
+            # Walk top-level boxes, seeking over heavy payloads.
+            moov_at = mdat_at = None
+            moov_buf = b""
+            pos = 0
+            while pos + 8 <= size:
+                f.seek(pos)
+                hdr = f.read(8)
+                if len(hdr) < 8:
+                    break
+                bsize = int.from_bytes(hdr[:4], "big")
+                btype = hdr[4:8].decode("latin-1")
+                h = 8
+                if bsize == 1:
+                    ext = f.read(8)
+                    if len(ext) < 8:
+                        break
+                    bsize = int.from_bytes(ext, "big")
+                    h = 16
+                elif bsize == 0:
+                    bsize = size - pos
+                if bsize < h or pos + bsize > size:
+                    break
+                if btype == "moov" and moov_at is None:
+                    moov_at = pos
+                    if bsize <= 128 * 1024 * 1024:
+                        f.seek(pos + h)
+                        moov_buf = f.read(bsize - h)
+                elif btype == "mdat" and mdat_at is None:
+                    mdat_at = pos
+                pos += bsize
+
+            if moov_at is not None and mdat_at is not None:
+                out["web_optimized"] = moov_at < mdat_at
+            if not moov_buf:
+                return out
+
+            # mvhd -> movie duration
+            for t, a, b in _iter_boxes(moov_buf, 0, len(moov_buf)):
+                if t == "mvhd":
+                    ver = moov_buf[a] if a < len(moov_buf) else 0
+                    ts = dur = 0
+                    if ver == 1 and a + 32 <= b:
+                        ts = int.from_bytes(moov_buf[a + 20:a + 24], "big")
+                        dur = int.from_bytes(moov_buf[a + 24:a + 32], "big")
+                    elif a + 20 <= b:
+                        ts = int.from_bytes(moov_buf[a + 12:a + 16], "big")
+                        dur = int.from_bytes(moov_buf[a + 16:a + 20], "big")
+                    if ts:
+                        out["duration_s"] = round(dur / ts, 2)
+                    break
+
+            # find the video codec: trak -> mdia -> minf -> stbl -> stsd entries
+            def stsd_codec(a, b):
+                if a + 8 > b:
+                    return None
+                count = int.from_bytes(moov_buf[a + 4:a + 8], "big")
+                pos = a + 8
+                for _ in range(min(count, 8)):
+                    if pos + 8 > b:
+                        return None
+                    esz = max(int.from_bytes(moov_buf[pos:pos + 4], "big"), 8)
+                    cc = moov_buf[pos + 4:pos + 8].decode("latin-1")
+                    if cc in ("avc1", "avc3"):
+                        if pos + 36 <= b:
+                            w = int.from_bytes(moov_buf[pos + 32:pos + 34], "big")
+                            hgt = int.from_bytes(moov_buf[pos + 34:pos + 36], "big")
+                            if w and hgt:
+                                out["width"], out["height"] = w, hgt
+                        return "h264"
+                    if cc in ("hvc1", "hev1"):
+                        return "hevc"
+                    if cc == "vp09":
+                        return "vp9"
+                    if cc == "av01":
+                        return "av1"
+                    if cc in ("mp4v", "xvid", "XVID", "divx"):
+                        return "mpeg4"
+                    pos += esz
+                return None
+
+            def walk_trak(a, b, depth):
+                for t, ca, cb in _iter_boxes(moov_buf, a, b):
+                    if t == "mdia" and depth < 3:
+                        r = walk_trak(ca, cb, depth + 1)
+                        if r:
+                            return r
+                    elif t == "minf" and depth < 3:
+                        r = walk_trak(ca, cb, depth + 1)
+                        if r:
+                            return r
+                    elif t == "stbl" and depth < 3:
+                        r = walk_trak(ca, cb, depth + 1)
+                        if r:
+                            return r
+                    elif t == "stsd":
+                        return stsd_codec(ca, cb)
+                return None
+
+            for t, a, b in _iter_boxes(moov_buf, 0, len(moov_buf)):
+                if t == "trak":
+                    c = walk_trak(a, b, 0)
+                    if c:
+                        out["codec"] = c
+                        break
+        return out
+    except Exception:
+        return out
+
+def probe_file(path, name, size, mtime):
+    key = (name, size, mtime)
+    hit = _PROBE_CACHE.get(key)
+    if hit is None:
+        ext = os.path.splitext(name)[1].lower()
+        if ext == ".mp4":
+            hit = probe_mp4(path, size)
+        else:
+            hit = {"container": "other", "codec": None, "web_optimized": None,
+                   "duration_s": None, "width": None, "height": None}
+        _PROBE_CACHE[key] = hit
+    return hit
+
 def auto_subtitle(folder, video):
     """Find a subtitle file that matches the movie's name (base or base.*)."""
     _, subs = list_media(folder)
@@ -429,6 +585,12 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(403, {"ok": False, "error": "unknown_room",
                                             "message": "Register the room first."})
                 videos, subs = list_media(self.folder)
+                for v in videos:
+                    try:
+                        v["probe"] = probe_file(os.path.join(self.folder, v["name"]),
+                                                v["name"], v["size"], v["modified"])
+                    except Exception:
+                        v["probe"] = None
                 return self._json(200, {"ok": True, "videos": videos, "subtitles": subs})
 
             if len(parts) == 3 and parts[:2] == ["api", "rooms"] and not post:

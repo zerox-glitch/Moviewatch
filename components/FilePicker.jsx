@@ -11,6 +11,61 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/server-api";
 import { formatBytes, shortName, isRiskyVideo } from "@/lib/format";
 
+function codecBadge(f) {
+  const pr = f.probe;
+  if (!pr) return null;
+  if (pr.container === "other" || isRiskyVideo(f.name)) {
+    return (
+      <span
+        className="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] font-bold uppercase text-amber-300"
+        title="Browsers can't play this format — convert to MP4 with HandBrake (see README)"
+      >
+        ⚠ won&apos;t play
+      </span>
+    );
+  }
+  if (pr.codec === "hevc")
+    return (
+      <span
+        className="shrink-0 rounded-lg border border-red-500/40 bg-red-500/10 px-2 py-1 text-[10px] font-bold uppercase text-red-300"
+        title="This MP4 contains HEVC/H.265 video, which browsers can't decode — HandBrake it to H.264"
+      >
+        HEVC ✗
+      </span>
+    );
+  if (pr.codec === "h264")
+    return (
+      <span
+        className="shrink-0 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase text-emerald-300"
+        title="Verified H.264 video — plays in every browser"
+      >
+        H.264 ✓
+      </span>
+    );
+  if (pr.codec === "av1")
+    return (
+      <span className="shrink-0 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase text-emerald-300">
+        AV1 ✓
+      </span>
+    );
+  if (pr.codec === "vp9")
+    return (
+      <span className="shrink-0 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase text-emerald-300">
+        VP9 ✓
+      </span>
+    );
+  if (pr.codec === "mpeg4")
+    return (
+      <span
+        className="shrink-0 rounded-lg border border-red-500/40 bg-red-500/10 px-2 py-1 text-[10px] font-bold uppercase text-red-300"
+        title="Old MPEG-4 video — browsers usually can't decode it — HandBrake it to H.264"
+      >
+        MPEG-4 ✗
+      </span>
+    );
+  return null;
+}
+
 export default function FilePicker({ serverUrl, roomId, currentFile, onPicked, onCancel }) {
   const [videos, setVideos] = useState(null);
   const [subCount, setSubCount] = useState(0);
@@ -131,14 +186,7 @@ export default function FilePicker({ serverUrl, roomId, currentFile, onPicked, o
                       {active && " · currently loaded"}
                     </span>
                   </span>
-                  {isRiskyVideo(f.name) && (
-                    <span
-                      className="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] font-bold uppercase text-amber-300"
-                      title="Browsers can't play this format — convert to MP4 with HandBrake (see README)"
-                    >
-                      ⚠ won't play
-                    </span>
-                  )}
+                  {codecBadge(f)}
                   <span className="shrink-0 rounded-lg bg-glow-600 px-3 py-1.5 text-xs font-bold text-white">
                     {picking === f.name ? "Loading…" : active ? "Reload" : "Watch"}
                   </span>

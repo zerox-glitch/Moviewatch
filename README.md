@@ -170,6 +170,16 @@ refreshes/restarts resume cleanly.
 ---
 
 ## Troubleshooting
+## Troubleshooting
+
+**Codec badges & the server read (automatic).** Your device's Python server reads the actual
+video codec inside every MP4 (from the file bytes, not the name). The movie picker marks each
+file **H.264 ✓** (plays everywhere), **HEVC ✗** (needs HandBrake), **MPEG-4 ✗** or **⚠ won't
+play** (.ts/.mkv/...). The room's Diagnostics line repeats the verdict for the loaded file:
+if it says *"this file IS HEVC — still the original download"*, you re-encoded fine but
+**picked the wrong file** — HandBrake's output lives in the folder you chose in its *Save As*
+box. Pick that one (it shows **H.264 ✓** in the picker) and it plays.
+
 
 **“A black window flashes and disappears fast”** — the #1 cause:
 
