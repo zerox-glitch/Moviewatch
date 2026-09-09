@@ -144,26 +144,26 @@ export default function DeviceConnect({ roomId, onConnected }) {
         <li className="rounded-lg border border-night-700 bg-night-900/50 p-4">
           <p className="font-semibold text-white">
             <span className="mr-2 rounded bg-glow-600 px-1.5 py-0.5 text-xs font-bold">2</span>
-            Download <b>one file</b> and double-click it
+            Download <b>both files</b> into the same folder
           </p>
-          <p className="mt-1 text-slate-400">
-            Get{" "}
-            <a
-              href={PY_DOWNLOAD}
-              target="_blank"
-              rel="noreferrer"
-              className="text-glow-300 underline decoration-glow-500/40 hover:text-glow-200"
-            >
-              moviewatch.py
-            </a>{" "}
-            — put it anywhere (Desktop, or even inside your movies folder). Double-click it and a
-            folder picker opens: choose your movies folder. A black window appears —{" "}
-            <b>that window is the server, leave it open</b>.
-          </p>
-          {WINDOWS && (
-            <p className="mt-2 text-xs text-slate-500">
-              Double-click does nothing? Right-click the file → <b>Open with</b> → <b>Python</b>.
-              Still nothing? Also grab{" "}
+          <ul className="mt-2 space-y-1 text-slate-400">
+            <li>
+              •{" "}
+              <a
+                href={PY_DOWNLOAD}
+                target="_blank"
+                rel="noreferrer"
+                className="text-glow-300 underline decoration-glow-500/40 hover:text-glow-200"
+              >
+                moviewatch.py
+              </a>{" "}
+              — the server. Re-download if you grabbed it before:{" "}
+              <b>older copies flash and close instantly</b>. The current one always shows
+              <code className="mx-1 rounded bg-black/30 px-1">MOVIEWATCH media server v3.x</code> and
+              waits for Enter before closing.
+            </li>
+            <li>
+              •{" "}
               <a
                 href={BAT_DOWNLOAD}
                 target="_blank"
@@ -171,9 +171,26 @@ export default function DeviceConnect({ roomId, onConnected }) {
                 className="text-glow-300 underline decoration-glow-500/40 hover:text-glow-200"
               >
                 start-moviewatch.bat
-              </a>
-              , put it next to moviewatch.py, and double-click that instead — it keeps errors
-              visible and tells you exactly what's missing.
+              </a>{" "}
+              {WINDOWS ? (
+                <>— <b>double-click this one</b> (not the .py). It handles Windows quirks and
+                keeps every error message visible.</>
+              ) : (
+                <>— Windows helper (not needed on a Mac).</>
+              )}
+            </li>
+          </ul>
+          <p className="mt-2 text-slate-400">
+            Put them anywhere (Desktop, or inside your movies folder). Launching opens a folder
+            picker: choose your movies folder. A black window appears —{" "}
+            <b>that window is the server, leave it open</b>. It tells you how many videos it
+            found.
+          </p>
+          {WINDOWS && (
+            <p className="mt-2 text-xs text-slate-500">
+              Double-clicking moviewatch.py flashes a window and vanishes? That's Windows opening
+              it wrongly — use start-moviewatch.bat instead. It never closes silently, and if
+              Python is missing it tells you exactly what to install.
             </p>
           )}
           <div className="mt-2">
@@ -181,10 +198,6 @@ export default function DeviceConnect({ roomId, onConnected }) {
               python moviewatch.py --dir {WINDOWS ? '"C:\\Users\\you\\Movies"' : '"~/Movies"'}
             </Cmd>
           </div>
-          <p className="mt-2 text-xs text-slate-500">
-            …or just <code className="rounded bg-black/30 px-1">python moviewatch.py</code> and pick
-            the folder when asked.
-          </p>
         </li>
 
         <li className="rounded-lg border border-night-700 bg-night-900/50 p-4">

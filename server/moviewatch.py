@@ -657,5 +657,33 @@ def main():
         print("\nBye! (state was saved)", flush=True)
 
 
+def _pause_before_close():
+    """Keep the window open (double-click on Windows) so messages are readable."""
+    try:
+        input("\nPress Enter to close this window…")
+    except (EOFError, OSError):
+        pass
+
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+        print("\nBye! (state was saved)", flush=True)
+    except KeyboardInterrupt:
+        print("\nBye! (state was saved)", flush=True)
+        _pause_before_close()
+    except SystemExit as e:
+        # argparse --help exits cleanly; real problems exit non-zero — keep
+        # the window open so the reason is visible.
+        if e.code:
+            _pause_before_close()
+    except BaseException:
+        import traceback
+
+        print("\n──────── something went wrong ────────", flush=True)
+        traceback.print_exc()
+        print(
+            "\nIf this says 'python' is not recognized, install Python from "
+            "https://www.python.org/downloads/\n(and tick 'Add python.exe to PATH')."
+        )
+        _pause_before_close()

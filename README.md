@@ -165,22 +165,25 @@ refreshes/restarts resume cleanly.
 
 ## Troubleshooting
 
-**Double-clicking moviewatch.py does nothing** — three usual causes:
+**“A black window flashes and disappears fast”** — the #1 cause:
 
-1. **Windows doesn't know what a .py is** (no Python installed, or the
-   “Add to PATH” box wasn't ticked). Fix: install Python from python.org with
-   the PATH box ticked — or just double-click `start-moviewatch.bat` instead;
-   it tells you exactly what's missing.
-2. **The file opens in an editor** (Notepad/IDLE/VS Code) instead of running.
-   Fix: right-click → **Open with** → **Python** (tick “Always” if shown).
-3. **A black window flashes and vanishes** = it crashed. Run
-   `start-moviewatch.bat` (or `python moviewatch.py` in PowerShell) — the
-   window now stays open and shows the actual error.
+1. **You're running an older copy of moviewatch.py.** Early versions closed
+   instantly on any error, so you never saw the reason. **Re-download
+   `server/moviewatch.py`** (link above) — the current version *never* closes
+   silently: every error stays on screen and it waits for you to press Enter.
+   When it starts correctly you'll see the big
+   `MOVIEWATCH media server v3.x` banner and it tells you how many videos it
+   found.
+2. Then prefer **`start-moviewatch.bat`** for launching: right-clicking
+   .py files can be hijacked by bad "Open with" associations (Notepad/VS Code)
+   or an old Python 2 — the .bat picks the right Python (`py -3`), detects the
+   fake "Microsoft Store python", and keeps all messages visible.
+3. If it *still* flashes: open PowerShell in that folder and run
+   `python moviewatch.py` — read what it says (it now stays open either way).
 
 Also: the folder-picker dialog can open *behind* other windows — check the
-taskbar. And the script never needs to be “in” the movies folder: if you
-double-click it and cancel the picker, it simply serves the folder it's in
-(if that has videos).
+taskbar. The script never needs to be “in” the movies folder: if you cancel
+the picker, it serves the folder it's in (if that folder has videos).
 
 **“Can't reach that address”** → The tunnel window closed or restarted (new
 address). Copy the fresh one and press Connect again.
@@ -203,6 +206,36 @@ Connect first (only the host's browser registers the room).
 folder with a matching name — or the host can pick it in the CC dropdown.
 
 ---
+
+## Vercel: fixing `404 NOT_FOUND` on your domain
+
+That error means **the production domain has no successful production
+deployment attached** — almost always a *branch* issue, because the working
+code lives on the `arena/01a07e2b-moviewatch` branch, while Vercel's
+Production Branch defaults to `main` (which is empty in this repo).
+
+**Pick ONE of these fixes:**
+
+**Fix A (fastest): point production at the right branch**
+
+1. Vercel dashboard → your project → **Settings → Git → Production Branch**.
+2. Change it from `main` to `arena/01a07e2b-moviewatch` → **Save**.
+3. **Deployments** tab → latest deployment → **⋯ → Redeploy** (Production
+   build).
+4. Visit the plain domain from **Settings → Domains**
+   (`whatever.vercel.app`) — it should render now.
+
+**Fix B (cleanest long-term): merge the branch into `main`**
+
+1. GitHub → your repo → **Pull requests → New pull request**.
+2. Set **base: `main`** ← **compare: `arena/01a07e2b-moviewatch`**.
+3. **Create pull request → Merge**. Main now has the app; Vercel's default
+   `main` production branch builds it on the next deploy (or trigger a
+   Redeploy).
+
+Note: `https://…vercel.app` **is** the production domain. URLs like
+`project-git-branch-user.vercel.app` are *preview* deployments — they're
+normal to exist alongside; just don't judge production by them.
 
 ## FAQ
 
