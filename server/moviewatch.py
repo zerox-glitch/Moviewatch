@@ -311,8 +311,11 @@ class Handler(BaseHTTPRequestHandler):
     store: Store = None
     folder: str = ""
 
-    def log_message(self, fmt, *args):  # quieter logs
+    def log_message(self, fmt, *args):  # keep the console quiet...
         pass
+
+    def log_request(self, code="-", size="-"):  # ...but remember the status
+        self._status = code
 
     # ---- plumbing ----------------------------------------------------------
     def _cors(self):
@@ -378,6 +381,22 @@ class Handler(BaseHTTPRequestHandler):
         self.route(post=True)
 
     def route(self, head=False, post=False):
+        started = _now()
+        self._media_bytes = 0
+        try:
+            return self._route(head=head, post=post)
+        finally:
+            try:
+                u = urllib.parse.urlsplit(self.path)
+                if u.path.startswith("/media/"):
+                    dur = int((_now() - started) * 1000)
+                    mib = self._media_bytes / 1048576.0
+                    status = getattr(self, "_status", "?")
+                    print(f"[media] {self.command} {u.path} -> {status} ({mib:.2f} MiB, {dur} ms)", flush=True)
+            except Exception:
+                pass
+
+    def _route(self, head=False, post=False):
         try:
             u = urllib.parse.urlsplit(self.path)
             parts = [urllib.parse.unquote(p) for p in u.path.split("/") if p]
@@ -570,6 +589,7 @@ class Handler(BaseHTTPRequestHandler):
                     if not chunk:
                         break
                     self.wfile.write(chunk)
+                    self._media_bytes += len(chunk)
                     remaining -= len(chunk)
         except (BrokenPipeError, ConnectionResetError):
             pass  # viewer paused/closed — stop streaming, that's fine

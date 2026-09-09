@@ -31,6 +31,7 @@ import { api, pushStateKeepalive } from "@/lib/server-api";
 import { normalizeServerUrl } from "@/lib/invite";
 import { prettySubLabel, shiftCues, whenCuesReady } from "@/lib/subtitles";
 import { formatTime, shortName, isRiskyVideo } from "@/lib/format";
+import { runMediaCheck, codecSupport } from "@/lib/media-check";
 import {
   GUEST_POLL_MS,
   HOST_HEARTBEAT_PAUSED_MS,
@@ -93,6 +94,9 @@ export default function RoomClient({ roomId }) {
 
   // ---- ui -----------------------------------------------------------------------
   const [toasts, setToasts] = useState([]);
+  // Playback diagnostics: is the media URL reachable, and what can this browser decode?
+  const [mediaCheck, setMediaCheck] = useState(null);
+  const codecs = useRef(null);
   const [copied, setCopied] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
   const [nowAt, setNowAt] = useState(0);
@@ -102,6 +106,31 @@ export default function RoomClient({ roomId }) {
     setToasts((ts) => [...ts.slice(-3), { id, message, tone }]);
     window.setTimeout(() => setToasts((ts) => ts.filter((t) => t.id !== id)), 6000);
   }, []);
+
+  // Probe the media URL + codec support once a movie is selected.
+  useEffect(() => {
+    if (!videoSrc) { setMediaCheck(null); return; }
+    let alive = true;
+    if (!codecs.current) codecs.current = codecSupport();
+    setMediaCheck(null);
+    runMediaCheck(videoSrc).then((r) => { if (alive) setMediaCheck(r); });
+    return () => { alive = false; };
+  }, [videoSrc]);
+
+  async function copyDirectLink() {
+    if (!videoSrc) return;
+    try {
+      await navigator.clipboard.writeText(videoSrc);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = videoSrc;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+    }
+    pushToast("🔗 Direct link copied — open it in a NEW browser tab", "info");
+  }
 
   const adoptView = useCallback(
     (view) => {
@@ -656,6 +685,15 @@ export default function RoomClient({ roomId }) {
           <Pill tone={conn === "online" ? "green" : conn === "offline" ? "red" : "amber"}>
             {conn === "online" ? "Device: online" : conn === "offline" ? "Device: offline" : "Connecting…"}
           </Pill>
+          {hasMovie && (
+            <Pill tone={mediaCheck === null ? "amber" : mediaCheck.ok ? "green" : "red"}>
+              {mediaCheck === null
+                ? "Media: testing…"
+                : mediaCheck.ok
+                  ? `Media: OK · ${mediaCheck.ms}ms`
+                  : "Media: FAIL"}
+            </Pill>
+          )}
           {isHost && inviteUrl && (
             <button
               onClick={copyInvite}
@@ -768,6 +806,7 @@ export default function RoomClient({ roomId }) {
 
           {/* ============ HOST controls (direct) ============ */}
           {isHost && (
+            <>
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <button onClick={() => seekLocal(-SEEK_STEP_S)} className={btn} title="Back 10 seconds">
                 ⏪ {SEEK_STEP_S}s
@@ -807,7 +846,12 @@ export default function RoomClient({ roomId }) {
               <button onClick={toggleFullscreen} className={btn} title="Fullscreen">
                 ⛶
               </button>
+              <button onClick={copyDirectLink} className={btn} title="Copy the video's direct URL — open it in a NEW browser tab to test whether the file itself streams">
+                🧪 Copy direct link
+              </button>
             </div>
+            <DiagnosticsLine mediaCheck={mediaCheck} codecs={codecs.current} />
+            </>
           )}
 
           {/* ============ GUEST controls (requests + local prefs) ============ */}
@@ -884,6 +928,7 @@ export default function RoomClient({ roomId }) {
               <p className="text-[11px] text-slate-500">
                 Volume &amp; subtitle tweaks are only on your screen — the other side is unaffected.
               </p>
+              <DiagnosticsLine mediaCheck={mediaCheck} codecs={codecs.current} />
             </div>
           )}
         </section>
@@ -914,6 +959,47 @@ function BigSpinner() {
       <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
+  );
+}
+
+function Mark({ ok }) {
+  return ok ? <span className="text-emerald-400">✓</span> : <span className="text-red-400">✗</span>;
+}
+
+function DiagnosticsLine({ mediaCheck, codecs }) {
+  const hevcMissing = codecs && codecs.hevc === "";
+  const h264Missing = codecs && codecs.h264 === "";
+  return (
+    <div className="mt-2 space-y-1 text-[11px] leading-relaxed text-slate-500">
+      <p>
+        <span className="font-semibold text-slate-400">Diagnostics</span> · Media path:{" "}
+        {mediaCheck === null ? (
+          "testing…"
+        ) : mediaCheck.ok ? (
+          <span className="text-emerald-400">reaching your browser OK ({mediaCheck.ms}ms)</span>
+        ) : (
+          <span className="text-red-400">
+            FAILED ({mediaCheck.reason}) — tunnel/server path problem, not the player
+          </span>
+        )}
+        {codecs && (
+          <>
+            {" · Codecs: H.264 "} <Mark ok={codecs.h264 !== ""} /> {", HEVC/H.265 "}{" "}
+            <Mark ok={codecs.hevc !== ""} /> {", WebM/VP9 "} <Mark ok={codecs.vp9 !== ""} />
+          </>
+        )}
+      </p>
+      {mediaCheck?.ok && hevcMissing && (
+        <p className="text-amber-400/90">
+          Your browser can&apos;t decode <b>HEVC/H.265</b> — downloads from Dailymotion/phones are
+          often HEVC even when named .mp4 (symptom: endless loading, no picture). Fix once with
+          HandBrake → “Fast 1080p30” → tick “Web Optimized” → pick the new .mp4.
+        </p>
+      )}
+      {mediaCheck?.ok && h264Missing && (
+        <p className="text-amber-400/90">This browser can&apos;t decode even H.264 — try Chrome/Edge/Firefox.</p>
+      )}
+    </div>
   );
 }
 
