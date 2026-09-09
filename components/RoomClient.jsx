@@ -98,6 +98,7 @@ export default function RoomClient({ roomId }) {
   const [mediaCheck, setMediaCheck] = useState(null);
   const codecs = useRef(null);
   const [hostPlaying, setHostPlaying] = useState(false);
+  const [fileCheck, setFileCheck] = useState(null);
   const [copied, setCopied] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
   const [nowAt, setNowAt] = useState(0);
@@ -117,6 +118,44 @@ export default function RoomClient({ roomId }) {
     runMediaCheck(videoSrc).then((r) => { if (alive) setMediaCheck(r); });
     return () => { alive = false; };
   }, [videoSrc]);
+
+  // File decode check: does THIS file actually contain picture data that this
+  // browser can decode? Metadata (duration) arriving = yes. An 'error' event
+  // or no metadata within 8s = codec/container problem — nothing any play
+  // button can do; the file needs a HandBrake re-encode.
+  useEffect(() => {
+    if (!videoSrc) { setFileCheck(null); return; }
+    setFileCheck(null);
+    const player = playerRef.current;
+    if (!player) return;
+    let done = false;
+    let timer = 0;
+    const mark = (ok, extra) => {
+      if (done) return;
+      done = true;
+      if (timer) window.clearTimeout(timer);
+      setFileCheck({ ok, ...extra });
+    };
+    const onMeta = () => {
+      let d = NaN;
+      try { d = player.duration?.(); } catch {}
+      if (Number.isFinite(d) && d > 0) mark(true, { duration: d });
+      else mark(false, { reason: "no-duration" });
+    };
+    const onErr = () => mark(false, { reason: "player-error" });
+    try {
+      player.one("loadedmetadata", onMeta);
+      player.one("error", onErr);
+      const d0 = player.duration?.(); // metadata may already be in
+      if (Number.isFinite(d0) && d0 > 0) mark(true, { duration: d0 });
+    } catch {}
+    timer = window.setTimeout(() => mark(false, { reason: "no-metadata" }), 8000);
+    return () => {
+      done = true;
+      if (timer) window.clearTimeout(timer);
+      try { player.off("loadedmetadata", onMeta); player.off("error", onErr); } catch {}
+    };
+  }, [videoSrc, playerBump]);
 
   async function copyDirectLink() {
     if (!videoSrc) return;
@@ -876,7 +915,7 @@ export default function RoomClient({ roomId }) {
                 🧪 Copy direct link
               </button>
             </div>
-            <DiagnosticsLine mediaCheck={mediaCheck} codecs={codecs.current} />
+            <DiagnosticsLine mediaCheck={mediaCheck} codecs={codecs.current} fileCheck={fileCheck} />
             </>
           )}
 
@@ -954,7 +993,7 @@ export default function RoomClient({ roomId }) {
               <p className="text-[11px] text-slate-500">
                 Volume &amp; subtitle tweaks are only on your screen — the other side is unaffected.
               </p>
-              <DiagnosticsLine mediaCheck={mediaCheck} codecs={codecs.current} />
+              <DiagnosticsLine mediaCheck={mediaCheck} codecs={codecs.current} fileCheck={fileCheck} />
             </div>
           )}
         </section>
@@ -992,7 +1031,7 @@ function Mark({ ok }) {
   return ok ? <span className="text-emerald-400">✓</span> : <span className="text-red-400">✗</span>;
 }
 
-function DiagnosticsLine({ mediaCheck, codecs }) {
+function DiagnosticsLine({ mediaCheck, codecs, fileCheck }) {
   const hevcMissing = codecs && codecs.hevc === "";
   const h264Missing = codecs && codecs.h264 === "";
   return (
@@ -1015,7 +1054,30 @@ function DiagnosticsLine({ mediaCheck, codecs }) {
           </>
         )}
       </p>
-      {mediaCheck?.ok && hevcMissing && (
+      <p>
+        <span className="font-semibold text-slate-400">File check</span> ·{" "}
+        {!fileCheck ? (
+          "reading this movie file…"
+        ) : fileCheck.ok ? (
+          <span className="text-emerald-400">
+            ✓ decodes in this browser · {formatTime(fileCheck.duration || 0)} — ready to play
+          </span>
+        ) : fileCheck.reason === "no-metadata" ? (
+          <span className="text-red-400">
+            ✗ no picture data after 8s — this browser cannot decode this file&apos;s codec.
+            Re-encode with HandBrake (“Fast 1080p30” + “Web Optimized”) and pick the NEW file.
+          </span>
+        ) : fileCheck.reason === "player-error" ? (
+          <span className="text-red-400">
+            ✗ the player says this file is broken/undecodable — re-encode with HandBrake.
+          </span>
+        ) : (
+          <span className="text-red-400">
+            ✗ no playable video track for this browser — re-encode with HandBrake.
+          </span>
+        )}
+      </p>
+      {mediaCheck?.ok && hevcMissing && fileCheck == null && (
         <p className="text-amber-400/90">
           Your browser can&apos;t decode <b>HEVC/H.265</b> — downloads from Dailymotion/phones are
           often HEVC even when named .mp4 (symptom: endless loading, no picture). Fix once with

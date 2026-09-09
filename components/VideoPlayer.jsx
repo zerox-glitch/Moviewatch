@@ -86,6 +86,15 @@ function VideoPlayer({ src, isHost, initialTime = 0, onReady, className = "" }) 
 
     const onLoadedMetadata = () => {
       const start = initialTimeRef.current;
+      try {
+        const d = player.duration?.();
+        // Saved position at/after the end (short clip, stale state) would sit
+        // on a black ended frame where Play does nothing — restart instead.
+        if (Number.isFinite(d) && d > 0 && start >= d - 0.5) {
+          player.currentTime(0);
+          return;
+        }
+      } catch {}
       if (start > 0.5 && Math.abs(player.currentTime() - start) > 0.5) {
         player.currentTime(start);
       }
