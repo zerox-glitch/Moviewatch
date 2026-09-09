@@ -55,10 +55,16 @@ Project** → import → Framework Preset **Next.js** (already pinned in
 ## Part 2 — Movie night (every time)
 
 **Step A — start the server on your PC.**
-Double-click `moviewatch.py` and pick your movies folder in the dialog. A black
-window opens — **that window is the server; leave it open.** It tells you how
-many videos it found. (Equivalent in a terminal:
-`python moviewatch.py --dir "C:\Users\you\Movies"`.)
+Double-click `moviewatch.py` (or `start-moviewatch.bat`) and pick your movies
+folder in the dialog. A black window opens — **that window is the server;
+leave it open.** It tells you how many videos it found. (Equivalent in a
+terminal: `python moviewatch.py --dir "C:\Users\you\Movies"`.)
+
+> **Copying commands from a chat app?** Chats rewrite filenames/URLs into
+> `[name](link)` form, which silently breaks them (curl ends up saving a tiny
+> error page instead of the script). Copy commands from `server/START-HERE.txt`
+> or the website's copy buttons instead — and check the downloaded file is
+> ~30 KB, not a few hundred bytes.
 
 **Step B — give it a public address (the tunnel).**
 Open a second window (PowerShell) and run:

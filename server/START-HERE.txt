@@ -1,52 +1,64 @@
-MOVIEWATCH - START HERE
-=======================
+MOVIEWATCH - START HERE  (your Python 3.13 already works - nothing to install)
+===============================================================================
 
-YOUR PYTHON IS PROBABLY ALREADY INSTALLED (Microsoft Store ships it).
-Do not "pip install python" - that is not a thing :)
+IMPORTANT: never copy commands from chat windows - chats turn filenames and
+URLs into  [something](http://...)  which breaks them. Copy from THIS FILE
+or use the copy buttons on the website instead.
 
-EASIEST WAY - PowerShell (always works, even when double-click fails):
------------------------------------------------------------------------
-1. Open PowerShell (Start button, type "powershell", Enter).
-2. Paste these three lines, pressing Enter after each:
+STEP 1 - CLEAN UP THE BROKEN DOWNLOAD
+-------------------------------------
+Open PowerShell (Start, type powershell, Enter) and run:
 
-     cd $HOME\Desktop
-     curl.exe -L -o moviewatch.py https://raw.githubusercontent.com/zerox-glitch/Moviewatch/arena/01a07e2b-moviewatch/server/moviewatch.py
-     python moviewatch.py
+    Remove-Item -Path "$HOME\Desktop\*moviewatch*" -Force
 
-   Line 2 always downloads the LATEST moviewatch.py (no stale copies).
-   Line 3 starts the server. If it says Videos found: 0, run it again
-   pointing at your real movies folder, e.g.:
+(that deletes the junk error-page file saved earlier)
 
-     python moviewatch.py --dir "C:\Users\Admin\Videos\Movies"
+STEP 2 - GET THE REAL moviewatch.py (pick ONE way)
+--------------------------------------------------
 
-   If "python" alone says not recognized, use the full Store path:
+WAY A - from the chat/file viewer (one click):
+    the agent opened moviewatch.py in your file viewer - use its Download
+    button and save it to your DESKTOP as  moviewatch.py
+    (check it is NOT named moviewatch.py.txt - enable
+     View > Show > File name extensions in Explorer)
 
-     & "$env:LOCALAPPDATA\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\python.exe" moviewatch.py
+WAY B - from GitHub in your BROWSER (click the link, do not copy it):
+    https://github.com/zerox-glitch/Moviewatch/blob/arena/01a07e2b-moviewatch/server/moviewatch.py
+    click the  "Download Raw File"  button near the top, save to Desktop.
 
-   Success looks like: a big "MOVIEWATCH media server" banner and
-   "Videos found: N". LEAVE THAT WINDOW OPEN - it is the server.
+WAY C - PowerShell (type it BY HAND, or copy from this file):
+    cd $HOME\Desktop
+    curl.exe -L -o moviewatch.py https://raw.githubusercontent.com/zerox-glitch/Moviewatch/arena/01a07e2b-moviewatch/server/moviewatch.py
 
-THEN - give it a public address (second PowerShell window):
------------------------------------------------------------------------
-     cloudflared tunnel --url http://localhost:7777
+CHECK: the file must be about 30 KB. Tiny file = error page = delete and
+retry.  Type  Get-Item $HOME\Desktop\moviewatch.py  to see its size.
 
-(first time only: install it with   winget install --id Cloudflare.cloudflared)
-Copy the https://xxxx.trycloudflare.com it prints into your room on the
-website, pick the movie, press "Copy invite link" and send it. Watch!
+STEP 3 - RUN THE SERVER (same PowerShell window)
+------------------------------------------------
+    cd $HOME\Desktop
+    python moviewatch.py
 
-DOUBLE-CLICK ROUTE (optional):
------------------------------------------------------------------------
-start-moviewatch.bat tries py, python, python3, and even the Microsoft
-Store Python in your WindowsApps folder - if any Python exists, it finds
-it and keeps all messages visible.
+- a folder picker opens: choose the folder with your movies
+- success = big "MOVIEWATCH media server" banner + "Videos found: N"
+- LEAVE THAT WINDOW OPEN - it is the server
+- if "Videos found: 0": press Ctrl+C, then run it pointing at your folder:
+    python moviewatch.py --dir "C:\Users\Admin\Videos\Movies"
 
-IF SOMETHING FAILS - get the real error:
------------------------------------------------------------------------
-1. In the folder with moviewatch.py, click the address bar in File
-   Explorer, type  powershell  and press Enter.
-2. Type:  python --version   (should say Python 3.x)
-3. Type:  python moviewatch.py
-Whatever prints is the truth - the new script never closes silently.
+STEP 4 - PUBLIC LINK (SECOND PowerShell window)
+-----------------------------------------------
+    cloudflared tunnel --url http://localhost:7777
+(first time only:  winget install --id Cloudflare.cloudflared )
+Copy the https://xxxx.trycloudflare.com address it prints.
 
-Keep this PC plugged in and awake during the movie
-(Settings > System > Power > Sleep: Never).
+STEP 5 - ON THE WEBSITE
+-----------------------
+Create Room -> paste the address -> Connect -> pick the movie ->
+"Copy invite link" -> send it -> press play. Your partner just opens it.
+
+IF ANYTHING FLASHES AND CLOSES
+------------------------------
+Launch from PowerShell (steps 3/4) - the message stays visible and tells you
+exactly what is wrong. start-moviewatch.bat also works: it finds py, python,
+python3, or the Microsoft Store Python automatically.
+
+Keep the PC plugged in and awake (Settings > System > Power > Sleep: Never).
