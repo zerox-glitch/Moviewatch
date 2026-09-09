@@ -16,12 +16,13 @@
 
 import "video.js/dist/video-js.css";
 
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { guessSourceType } from "@/lib/format";
 
 function VideoPlayer({ src, isHost, initialTime = 0, onReady, className = "" }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
+  const [readyTick, setReadyTick] = useState(0); // bumps once the engine exists
   const onReadyRef = useRef(onReady);
   const initialTimeRef = useRef(initialTime);
   onReadyRef.current = onReady;
@@ -60,6 +61,10 @@ function VideoPlayer({ src, isHost, initialTime = 0, onReady, className = "" }) 
 
       playerRef.current = player;
       onReadyRef.current?.(player);
+      // The attach effect below must re-run even if `src` didn't change while
+      // the engine was loading (cold cache): without this bump a component
+      // mounted WITH a src would never attach it (endless black loading).
+      setReadyTick((t) => t + 1);
     })();
 
     return () => {
@@ -101,7 +106,7 @@ function VideoPlayer({ src, isHost, initialTime = 0, onReady, className = "" }) 
     };
     player.one("loadedmetadata", onLoadedMetadata);
     return () => player.off("loadedmetadata", onLoadedMetadata);
-  }, [src]);
+  }, [src, readyTick]);
 
   return (
     <div
