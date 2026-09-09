@@ -18,6 +18,8 @@ const PY_DOWNLOAD =
   "https://github.com/zerox-glitch/Moviewatch/raw/arena/01a07e2b-moviewatch/server/moviewatch.py";
 const BAT_DOWNLOAD =
   "https://github.com/zerox-glitch/Moviewatch/raw/arena/01a07e2b-moviewatch/server/start-moviewatch.bat";
+const TXT_DOWNLOAD =
+  "https://github.com/zerox-glitch/Moviewatch/raw/arena/01a07e2b-moviewatch/server/START-HERE.txt";
 
 function Cmd({ children }) {
   const [copied, setCopied] = useState(false);
@@ -178,6 +180,19 @@ export default function DeviceConnect({ roomId, onConnected }) {
               ) : (
                 <>— Windows helper (not needed on a Mac).</>
               )}
+            </li>
+            <li>
+              •{" "}
+              <a
+                href={TXT_DOWNLOAD}
+                target="_blank"
+                rel="noreferrer"
+                className="text-glow-300 underline decoration-glow-500/40 hover:text-glow-200"
+              >
+                START-HERE.txt
+              </a>{" "}
+              — a plain checklist to save on your PC (includes what to do if a window
+              flashes and closes).
             </li>
           </ul>
           <p className="mt-2 text-slate-400">

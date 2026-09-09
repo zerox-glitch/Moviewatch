@@ -1,0 +1,40 @@
+
+MOVIEWATCH - START HERE
+=======================
+
+ONE-TIME (only the very first time):
+  1. Install Python:  https://www.python.org/downloads/
+     (on the first installer screen, TICK "Add python.exe to PATH")
+  2. Install cloudflared - open PowerShell and run:
+        winget install --id Cloudflare.cloudflared
+
+EVERY MOVIE NIGHT:
+  1. Double-click  start-moviewatch.bat
+     - a folder picker appears: choose the folder with your movies
+     - a black window stays open: that window IS the server. Leave it open.
+       It should show a big "MOVIEWATCH media server" banner and say how
+       many videos it found.
+  2. Open a SECOND window (PowerShell) and run:
+        cloudflared tunnel --url http://localhost:7777
+     It prints a  https://xxxx.trycloudflare.com  address.
+  3. On your website (yourapp.vercel.app): Create Room, paste that address,
+     press Connect, pick the movie, then "Copy invite link" and send it.
+
+IF NOTHING HAPPENS / A WINDOW FLASHES AND CLOSES:
+  Run the server by hand and read the real error:
+    1. Open this folder in File Explorer.
+    2. Click the address bar at the top, type:  powershell   then Enter.
+    3. In the blue window, type:   python --version   then Enter.
+       (also try:  py --version )
+    4. Then type:   python moviewatch.py   then Enter.
+  Whatever it prints is the real problem:
+    - "'python' is not recognized" -> Python is not installed (see ONE-TIME)
+    - "Python 2.7..." or "SyntaxError" -> old Python 2 is installed;
+      install Python 3 from python.org
+    - a big MOVIEWATCH banner -> it IS working - keep the window open!
+
+Notes:
+  - Keep the file names exactly: moviewatch.py and start-moviewatch.bat
+    (if Explorer hides extensions, check the download isn't "...bat.txt")
+  - Keep this PC plugged in and awake during the movie
+    (Settings > System > Power > Sleep: Never)
