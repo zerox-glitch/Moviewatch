@@ -162,8 +162,9 @@ get **CC on/off** and a **sync nudge (±0.5s per tap)** for the classic
 | Fullscreen | ✓ | ✓ |
 
 Sync: host pushes position ~1×/sec (instantly on play/pause/seek); guest
-reconciles every 400 ms — jumps only if >0.5 s off, gentle rate-nudge between
-0.15–0.5 s. Host device gone → guest freezes (like a pause) and resumes
+reconciles every 400 ms — small drift is corrected with an invisible ±4 %
+speed nudge; a visible jump only happens when it's >2.5 s off (and at most
+once every 6 s), so playback never stutters to stay aligned. Host device gone → guest freezes (like a pause) and resumes
 automatically. Position saves to `moviewatch-state.json` next to the script, so
 refreshes/restarts resume cleanly.
 

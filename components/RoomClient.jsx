@@ -10,7 +10,8 @@
 //           play/pause/seek (incl. ±10s buttons), plus a 1s heartbeat while
 //           playing. Polls the request queue and applies guest requests.
 //   GUEST — passive. Polls every 400ms and reconciles: jump if >0.5s off,
-//           gentle rate-nudge between 0.15–0.5s. Buttons only send REQUESTS.
+//           invisible speed-nudge 0.35–2.5s; hard seek only past 2.5s (sustained,
+//           max once per 6s). Buttons only send REQUESTS.
 //
 // Controls
 //   Synced:      play/pause, position, seeks, which movie/subtitle track
@@ -41,6 +42,7 @@ import {
   REQUEST_THROTTLE_MS,
   SEEK_STEP_S,
   SOFT_DRIFT_S,
+  SEEK_COOLDOWN_MS,
   SUBTITLE_OFFSET_STEP_S,
   SYNC_TOLERANCE_S,
 } from "@/lib/constants";
@@ -322,6 +324,9 @@ export default function RoomClient({ roomId }) {
   useEffect(() => {
     if (phase !== "ready" || isHost || !serverUrl) return;
 
+    let seekPending = false; // first out-of-band tick arms, second one seeks
+    let lastSeekAt = 0;
+
     const iv = setInterval(() => {
       const player = playerRef.current;
       const view = roomRef.current;
@@ -349,18 +354,34 @@ export default function RoomClient({ roomId }) {
         player.pause();
       }
 
-      // drift correction vs extrapolated host position
+      // Drift correction vs extrapolated host position — tuned to be INVISIBLE.
+      //   < 0.35s          -> do nothing (nobody notices)
+      //   0.35s – 2.5s     -> nudge playback speed ±4% (unnoticeable, no seek)
+      //   > 2.5s sustained -> hard seek, at most one every SEEK_COOLDOWN_MS
+      // Constant small seeks (the old 0.5s rule) made the video jump back and
+      // forth; being a second off is imperceptible in a watch party.
       const elapsed = playing ? Math.max(0, (Date.now() - recvAtRef.current) / 1000) : 0;
       const expected = (view.current_time || 0) + elapsed;
       const d = player.currentTime() - expected;
+      const ad = Math.abs(d);
 
-      if (Math.abs(d) > SYNC_TOLERANCE_S) {
-        player.currentTime(Math.max(0, expected));
-        player.playbackRate(1);
-      } else if (playing && Math.abs(d) > SOFT_DRIFT_S) {
-        player.playbackRate(d > 0 ? 0.97 : 1.03);
-      } else if (player.playbackRate() !== 1) {
-        player.playbackRate(1);
+      if (ad <= SYNC_TOLERANCE_S) {
+        seekPending = false;
+        if (playing && ad > SOFT_DRIFT_S) {
+          player.playbackRate(d > 0 ? 0.96 : 1.04);
+        } else if (player.playbackRate() !== 1) {
+          player.playbackRate(1);
+        }
+      } else {
+        if (seekPending && Date.now() - lastSeekAt >= SEEK_COOLDOWN_MS) {
+          player.currentTime(Math.max(0, expected));
+          player.playbackRate(1);
+          lastSeekAt = Date.now();
+          seekPending = false;
+        } else {
+          seekPending = true;
+        }
+        if (!playing && player.playbackRate() !== 1) player.playbackRate(1);
       }
       setDrift(Math.round(d * 100) / 100);
     }, GUEST_POLL_MS);
