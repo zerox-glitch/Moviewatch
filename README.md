@@ -204,6 +204,10 @@ HandBrake “Fast 1080p30” — halves the bitrate, doubles smoothness.
 **“Room not registered”** → The host must open their room link and press
 Connect first (only the host's browser registers the room).
 
+**Player hangs loading, never plays** → Unplayable format (`.ts`, `.mkv`,
+`.avi`…). Convert with HandBrake to MP4 and pick the new file (the ⚠ badge
+marks these).
+
 **No sound / green screen** → Codec issue. Re-encode MP4 (H.264 + AAC).
 
 **Port 7777 busy** → `python moviewatch.py --port 7778` and tunnel to that port.
@@ -255,8 +259,12 @@ use, the named tunnel (above) is Cloudflare's intended, free way.
 
 **Internet drops mid-movie?** Guest freezes and auto-resumes; sync survives.
 
-**Movie files** — **MP4 (H.264 + AAC)** plays everywhere. Convert free with
-[HandBrake](https://handbrake.fr) → “Fast 1080p30” → tick **Web Optimized**.
+**Movie files** — **MP4 (H.264 + AAC)** plays everywhere. **TS / MKV / AVI /
+WMV / FLV / MPG cannot play in browsers at all** (the player just hangs —
+common with `.ts` downloads from Dailymotion etc.). The app shows a ⚠ badge
+next to such files and a warning banner when one is loaded. Convert once with
+[HandBrake](https://handbrake.fr) → open the file → “Fast 1080p30” → tick
+**Web Optimized** → Start Encode → pick the new `.mp4` in the app.
 
 ---
 

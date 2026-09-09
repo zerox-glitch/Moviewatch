@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/server-api";
-import { formatBytes, shortName } from "@/lib/format";
+import { formatBytes, shortName, isRiskyVideo } from "@/lib/format";
 
 export default function FilePicker({ serverUrl, roomId, currentFile, onPicked, onCancel }) {
   const [videos, setVideos] = useState(null);
@@ -131,6 +131,14 @@ export default function FilePicker({ serverUrl, roomId, currentFile, onPicked, o
                       {active && " · currently loaded"}
                     </span>
                   </span>
+                  {isRiskyVideo(f.name) && (
+                    <span
+                      className="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] font-bold uppercase text-amber-300"
+                      title="Browsers can't play this format — convert to MP4 with HandBrake (see README)"
+                    >
+                      ⚠ won't play
+                    </span>
+                  )}
                   <span className="shrink-0 rounded-lg bg-glow-600 px-3 py-1.5 text-xs font-bold text-white">
                     {picking === f.name ? "Loading…" : active ? "Reload" : "Watch"}
                   </span>

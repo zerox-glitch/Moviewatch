@@ -4,12 +4,17 @@
 // Video.js wrapper.
 //
 // - video.js loads client-side via dynamic import (it needs `window`).
+// - The stylesheet below is what makes the player LOOK like a player — without
+//   it the controls render as a pile of unstyled text. It must be imported
+//   alongside the player (App Router allows global CSS from node_modules).
 // - Host  -> full native controls (play/pause/seek/volume in the control bar).
 // - Guest -> controls stripped; sync is driven from RoomClient via onReady().
 // - crossOrigin="anonymous" is required for the WebVTT subtitle tracks served
 //   from the host's tunnel (different origin than the Vercel app) — the media
 //   server replies with CORS headers, so "anonymous" is safe.
 // ============================================================================
+
+import "video.js/dist/video-js.css";
 
 import { memo, useEffect, useRef } from "react";
 import { guessSourceType } from "@/lib/format";

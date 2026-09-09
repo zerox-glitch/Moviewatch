@@ -30,7 +30,7 @@ import VolumeControl from "@/components/VolumeControl";
 import { api, pushStateKeepalive } from "@/lib/server-api";
 import { normalizeServerUrl } from "@/lib/invite";
 import { prettySubLabel, shiftCues, whenCuesReady } from "@/lib/subtitles";
-import { formatTime, shortName } from "@/lib/format";
+import { formatTime, shortName, isRiskyVideo } from "@/lib/format";
 import {
   GUEST_POLL_MS,
   HOST_HEARTBEAT_PAUSED_MS,
@@ -378,6 +378,14 @@ export default function RoomClient({ roomId }) {
         player.muted(muted);
       } catch {}
 
+      player.on("error", () => {
+        const file = roomRef.current?.file || "";
+        const hint = isRiskyVideo(file)
+          ? ` .${(file.match(/\.([a-z0-9]+)$/i)?.[1] || "").toUpperCase()} files can't play in browsers — convert it to MP4 with HandBrake (free).`
+          : " MP4 (H.264 + AAC) plays everywhere — see README for a free converter.";
+        pushToast("Playback error." + hint, "error");
+      });
+
       if (!isHost) return;
       const onActivity = () => pushNow();
       player.on("play", onActivity);
@@ -387,7 +395,7 @@ export default function RoomClient({ roomId }) {
       player.on("ended", onActivity);
       player.on("seeked", onActivity);
     },
-    [isHost, pushNow, volume, muted]
+    [isHost, pushNow, volume, muted, pushToast]
   );
 
   // Save the host's exact position if they close/refresh the tab.
@@ -554,6 +562,8 @@ export default function RoomClient({ roomId }) {
 
   // ---- derived UI state -------------------------------------------------------
   const hasMovie = Boolean(room?.file) && Boolean(videoSrc);
+  const riskyFile = isRiskyVideo(room?.file);
+  const riskyExt = (room?.file?.match(/\.([a-z0-9]+)$/i)?.[1] || "?").toUpperCase();
   const hostOnline = room?.host_online === true;
   const guestPlaying = (room?.is_playing && hostOnline) === true;
   const hasSubtitles = Boolean(room?.subtitle);
@@ -661,6 +671,34 @@ export default function RoomClient({ roomId }) {
         <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
           ⚡ Can&apos;t reach the host device right now — retrying automatically. Check that the
           two windows (moviewatch.py + tunnel) are still running on the host&apos;s PC.
+        </div>
+      )}
+
+      {hasMovie && riskyFile && (
+        <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          {isHost ? (
+            <>
+              <b>⚠️ Heads up:</b> <b>.{riskyExt}</b> files (like this one) can&apos;t be played by
+              browsers — that&apos;s why the player hangs. Convert it once with the free app{" "}
+              <a
+                href="https://handbrake.fr"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold underline decoration-amber-400/60"
+              >
+                HandBrake
+              </a>
+              : open the file → preset <b>“Fast 1080p30”</b> → tick <b>“Web Optimized”</b> →
+              Start Encode (saves a .mp4). Then press <b>♻️ Change movie</b> and pick the new
+              MP4 — your co-watcher streams whatever you pick.
+            </>
+          ) : (
+            <>
+              <b>⚠️ Heads up:</b> this movie is a <b>.{riskyExt}</b> file, which browsers
+              can&apos;t play. Ask the host to convert it to MP4 (free app: HandBrake) and pick
+              it again — then it will play for both of you.
+            </>
+          )}
         </div>
       )}
 
