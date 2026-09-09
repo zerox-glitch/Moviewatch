@@ -97,6 +97,7 @@ export default function RoomClient({ roomId }) {
   // Playback diagnostics: is the media URL reachable, and what can this browser decode?
   const [mediaCheck, setMediaCheck] = useState(null);
   const codecs = useRef(null);
+  const [hostPlaying, setHostPlaying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
   const [nowAt, setNowAt] = useState(0);
@@ -416,6 +417,9 @@ export default function RoomClient({ roomId }) {
       });
 
       if (!isHost) return;
+      player.on("play", () => setHostPlaying(true));
+      player.on("pause", () => setHostPlaying(false));
+      player.on("ended", () => setHostPlaying(false));
       const onActivity = () => pushNow();
       player.on("play", onActivity);
       player.on("pause", () => {
@@ -587,6 +591,21 @@ export default function RoomClient({ roomId }) {
     if (!player) return;
     if (player.isFullscreen()) player.exitFullscreen();
     else player.requestFullscreen();
+  }
+
+  function togglePlay() {
+    const player = playerRef.current;
+    if (!player) return;
+    if (player.paused()) {
+      Promise.resolve(player.play()).catch(() =>
+        pushToast(
+          "The browser refused to start this file — check Diagnostics below. Usually HEVC/H.265 → re-encode once with HandBrake.",
+          "error"
+        )
+      );
+    } else {
+      player.pause();
+    }
   }
 
   // ---- derived UI state -------------------------------------------------------
@@ -808,6 +827,13 @@ export default function RoomClient({ roomId }) {
           {isHost && (
             <>
             <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                onClick={togglePlay}
+                className="rounded-xl bg-gradient-to-r from-glow-600 to-glow-500 px-5 py-2.5 text-sm font-bold text-white shadow-glow transition hover:brightness-110 active:scale-[0.98]"
+                title="Play / pause"
+              >
+                {hostPlaying ? "⏸ Pause" : "▶️ Play"}
+              </button>
               <button onClick={() => seekLocal(-SEEK_STEP_S)} className={btn} title="Back 10 seconds">
                 ⏪ {SEEK_STEP_S}s
               </button>
