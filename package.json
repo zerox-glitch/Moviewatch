@@ -1,0 +1,26 @@
+{
+  "name": "moviewatch",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Real-time synced movie watch parties \u2014 streams the movie straight from the host's own PC",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "server": "node server/moviewatch-server.mjs"
+  },
+  "dependencies": {
+    "next": "14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "video.js": "^8.21.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
