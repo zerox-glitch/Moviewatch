@@ -1,40 +1,52 @@
-
 MOVIEWATCH - START HERE
 =======================
 
-ONE-TIME (only the very first time):
-  1. Install Python:  https://www.python.org/downloads/
-     (on the first installer screen, TICK "Add python.exe to PATH")
-  2. Install cloudflared - open PowerShell and run:
-        winget install --id Cloudflare.cloudflared
+YOUR PYTHON IS PROBABLY ALREADY INSTALLED (Microsoft Store ships it).
+Do not "pip install python" - that is not a thing :)
 
-EVERY MOVIE NIGHT:
-  1. Double-click  start-moviewatch.bat
-     - a folder picker appears: choose the folder with your movies
-     - a black window stays open: that window IS the server. Leave it open.
-       It should show a big "MOVIEWATCH media server" banner and say how
-       many videos it found.
-  2. Open a SECOND window (PowerShell) and run:
-        cloudflared tunnel --url http://localhost:7777
-     It prints a  https://xxxx.trycloudflare.com  address.
-  3. On your website (yourapp.vercel.app): Create Room, paste that address,
-     press Connect, pick the movie, then "Copy invite link" and send it.
+EASIEST WAY - PowerShell (always works, even when double-click fails):
+-----------------------------------------------------------------------
+1. Open PowerShell (Start button, type "powershell", Enter).
+2. Paste these three lines, pressing Enter after each:
 
-IF NOTHING HAPPENS / A WINDOW FLASHES AND CLOSES:
-  Run the server by hand and read the real error:
-    1. Open this folder in File Explorer.
-    2. Click the address bar at the top, type:  powershell   then Enter.
-    3. In the blue window, type:   python --version   then Enter.
-       (also try:  py --version )
-    4. Then type:   python moviewatch.py   then Enter.
-  Whatever it prints is the real problem:
-    - "'python' is not recognized" -> Python is not installed (see ONE-TIME)
-    - "Python 2.7..." or "SyntaxError" -> old Python 2 is installed;
-      install Python 3 from python.org
-    - a big MOVIEWATCH banner -> it IS working - keep the window open!
+     cd $HOME\Desktop
+     curl.exe -L -o moviewatch.py https://raw.githubusercontent.com/zerox-glitch/Moviewatch/arena/01a07e2b-moviewatch/server/moviewatch.py
+     python moviewatch.py
 
-Notes:
-  - Keep the file names exactly: moviewatch.py and start-moviewatch.bat
-    (if Explorer hides extensions, check the download isn't "...bat.txt")
-  - Keep this PC plugged in and awake during the movie
-    (Settings > System > Power > Sleep: Never)
+   Line 2 always downloads the LATEST moviewatch.py (no stale copies).
+   Line 3 starts the server. If it says Videos found: 0, run it again
+   pointing at your real movies folder, e.g.:
+
+     python moviewatch.py --dir "C:\Users\Admin\Videos\Movies"
+
+   If "python" alone says not recognized, use the full Store path:
+
+     & "$env:LOCALAPPDATA\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\python.exe" moviewatch.py
+
+   Success looks like: a big "MOVIEWATCH media server" banner and
+   "Videos found: N". LEAVE THAT WINDOW OPEN - it is the server.
+
+THEN - give it a public address (second PowerShell window):
+-----------------------------------------------------------------------
+     cloudflared tunnel --url http://localhost:7777
+
+(first time only: install it with   winget install --id Cloudflare.cloudflared)
+Copy the https://xxxx.trycloudflare.com it prints into your room on the
+website, pick the movie, press "Copy invite link" and send it. Watch!
+
+DOUBLE-CLICK ROUTE (optional):
+-----------------------------------------------------------------------
+start-moviewatch.bat tries py, python, python3, and even the Microsoft
+Store Python in your WindowsApps folder - if any Python exists, it finds
+it and keeps all messages visible.
+
+IF SOMETHING FAILS - get the real error:
+-----------------------------------------------------------------------
+1. In the folder with moviewatch.py, click the address bar in File
+   Explorer, type  powershell  and press Enter.
+2. Type:  python --version   (should say Python 3.x)
+3. Type:  python moviewatch.py
+Whatever prints is the truth - the new script never closes silently.
+
+Keep this PC plugged in and awake during the movie
+(Settings > System > Power > Sleep: Never).

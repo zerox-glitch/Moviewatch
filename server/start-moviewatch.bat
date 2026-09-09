@@ -6,21 +6,38 @@ echo   MOVIEWATCH - starting. This window IS the server.
 echo   Keep it open during the movie. Errors will stay visible.
 echo ==============================================================
 
-rem --- 1) The "py" launcher always points at a real Python 3 if present ---
+rem --- 1) "py" launcher (comes with python.org installs) ---
 where py >nul 2>nul
 if not errorlevel 1 (py -3 moviewatch.py & goto done)
 
-rem --- 2) Fall back to "python", but reject the Microsoft Store placeholder ---
+rem --- 2) plain "python" (python.org or Microsoft Store) ---
 where python >nul 2>nul
-if errorlevel 1 goto nopython
+if not errorlevel 1 (
+  python --version >nul 2>nul
+  if not errorlevel 1 (python moviewatch.py & goto done)
+)
 
-python --version >nul 2>nul
-if errorlevel 1 goto storepython
+rem --- 3) "python3" alias ---
+where python3 >nul 2>nul
+if not errorlevel 1 (
+  python3 --version >nul 2>nul
+  if not errorlevel 1 (python3 moviewatch.py & goto done)
+)
 
-python moviewatch.py
-goto done
+rem --- 4) Microsoft Store Python with aliases turned off: scan WindowsApps ---
+set "EXE="
+for /d %%D in ("%LOCALAPPDATA%\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.*") do (
+  if exist "%%D\python.exe" set "EXE=%%D\python.exe"
+)
+if defined EXE (
+  echo   Using your Microsoft Store Python:
+  echo   %EXE%
+  echo.
+  "%EXE%" moviewatch.py
+  goto done
+)
 
-:nopython
+rem --- 5) nothing found ---
 echo.
 echo   Python was not found on this PC.
 echo.
@@ -28,21 +45,6 @@ echo   1. Install it from:  https://www.python.org/downloads/
 echo   2. IMPORTANT: on the very first installer screen, TICK
 echo      "Add python.exe to PATH"
 echo   3. Then run this file again.
-echo.
-pause
-goto done
-
-:storepython
-echo.
-echo   The "python" on this PC is the Microsoft Store PLACEHOLDER,
-echo   not a real Python installation.
-echo.
-echo   Fix (2 minutes):
-echo     a) Windows Settings, search "App execution aliases",
-echo        turn OFF both "python" aliases
-echo     b) Install real Python from https://www.python.org/downloads/
-echo        (tick "Add python.exe to PATH")
-echo     c) Run this file again.
 echo.
 pause
 goto done

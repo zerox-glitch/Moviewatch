@@ -208,6 +208,21 @@ export default function DeviceConnect({ roomId, onConnected }) {
               Python is missing it tells you exactly what to install.
             </p>
           )}
+          <p className="mt-3 text-xs font-semibold text-slate-400">
+            PowerShell route (works even when double-click doesn&apos;t — Store-Python PCs):
+          </p>
+          <div className="mt-2 space-y-2">
+            <Cmd>cd $HOME\Desktop</Cmd>
+            <Cmd>curl.exe -L -o moviewatch.py https://raw.githubusercontent.com/zerox-glitch/Moviewatch/arena/01a07e2b-moviewatch/server/moviewatch.py</Cmd>
+            <Cmd>python moviewatch.py</Cmd>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            The curl line always grabs the latest version. Success = the big
+            &ldquo;MOVIEWATCH media server&rdquo; banner. If <code className="rounded bg-black/30 px-1">python</code>{" "}
+            isn&apos;t recognized, your Microsoft Store Python lives at{" "}
+            <code className="rounded bg-black/30 px-1">%LOCALAPPDATA%\Microsoft\WindowsApps\…python.exe</code>{" "}
+            — or just use the .bat, which finds it automatically.
+          </p>
           <div className="mt-2">
             <Cmd>
               python moviewatch.py --dir {WINDOWS ? '"C:\\Users\\you\\Movies"' : '"~/Movies"'}
